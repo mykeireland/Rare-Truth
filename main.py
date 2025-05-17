@@ -1,3 +1,6 @@
+from telegram.ext import Application, CommandHandler
+from snapshot import snapshot
+
 import asyncio
 
 async def main():
