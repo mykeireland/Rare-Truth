@@ -1,18 +1,12 @@
-# Rare Truth Bot v3
+# Rare Truth Bot
 
-### 🎯 Features:
-- CoinGecko-powered live price + volume
-- RSI calculation based on recent price history
-- Zone-aware messaging logic:
-  - Accumulation / Watch / Breakout / Trim 1 / Trim 2
-- 5-minute cooldown to prevent spam
-- Configurable zones and volume thresholds
-- Clean Telegram alerts with confidence signals
+Multi-file project with:
+- Automated price zone alerts
+- Volume & RSI filtering
+- /snapshot command
+- Configurable via config.py
 
-### 📦 Config via `config.py`
-Set your zone prices, volume thresholds, and RSI options easily in one file.
-
-### 📬 Telegram
-- Set `TELEGRAM_TOKEN` and `CHAT_ID` in Railway env
-
-Bot checks every 60s and alerts when new zone reached or when a zone holds after 5 mins.
+## Deploy
+1. Push to GitHub
+2. Railway start command: python main.py
+3. Set env vars TELEGRAM_TOKEN, CHAT_ID

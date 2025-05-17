@@ -1,4 +1,4 @@
-import requests, os, time
+import os, time, requests
 from telegram import Bot
 from telegram.constants import ParseMode
 from config import CONFIG
@@ -6,67 +6,51 @@ from utils import calculate_rsi
 
 class StrategyEngine:
     def __init__(self):
-        self.config = CONFIG
-        self.bot = Bot(token=os.getenv("TELEGRAM_TOKEN"))
+        token = os.getenv("TELEGRAM_TOKEN")
+        self.bot = Bot(token=token)
         self.chat_id = os.getenv("CHAT_ID")
+        self.config = CONFIG
         self.history = []
-        self.last_alert_type = None
-        self.last_alert_time = 0
+        self.last_alert = {}
 
-    def fetch_data(self):
-        url = f"https://api.coingecko.com/api/v3/coins/{self.config['coin_id']}"
+    def fetch_market(self):
         try:
-            res = requests.get(url)
-            data = res.json()
-            price = data["market_data"]["current_price"]["usd"]
-            volume = data["market_data"]["total_volume"]["usd"]
-            return price, volume
-        except Exception as e:
-            print("Error fetching CoinGecko data:", e)
+            data = requests.get(f"https://api.coingecko.com/api/v3/coins/{self.config['coin_id']}").json()['market_data']
+            return data['current_price']['usd'], data['total_volume']['usd']
+        except:
             return None, None
 
-    async def send(self, msg):
-        try:
-            await self.bot.send_message(chat_id=self.chat_id, text=msg, parse_mode=ParseMode.HTML)
-        except Exception as e:
-            print("Telegram send failed:", e)
-
     async def evaluate(self):
-        price, volume = self.fetch_data()
-        if not price:
+        price, volume = self.fetch_market()
+        if price is None:
             return
-
         now = time.time()
+
+        # RSI
         self.history.append(price)
-        self.history = self.history[-self.config["rsi_period"]:]
-        rsi = calculate_rsi(self.history) if self.config["rsi_enabled"] and len(self.history) >= 2 else None
+        self.history = self.history[-self.config['rsi_period']:]
+        rsi = None
+        if self.config['rsi_enabled'] and len(self.history) >= 2:
+            rsi = calculate_rsi(self.history, self.config['rsi_period'])
 
-        msg = None
-        zone = None
+        z = self.config['zones']
+        zone = msg = None
+        if z['accumulation']['min'] <= price <= z['accumulation']['max']:
+            zone, msg = 'accumulation', f"📥 ACCUMULATION ZONE: ${price:.4f}"
+        elif z['watch']['min'] <= price <= z['watch']['max']:
+            lvl = 'strong 🔥' if volume >= self.config['volume_threshold'] else 'low ⚠️'
+            zone, msg = 'watch', f"👀 WATCH ZONE: ${price:.4f} | Volume {lvl}"
+        elif z['breakout']['min'] <= price <= z['breakout']['max']:
+            zone, msg = 'breakout', f"🚀 BREAKOUT forming: ${price:.4f}"
+        elif z['trim1']['min'] <= price <= z['trim1']['max']:
+            zone, msg = 'trim1', f"💰 TRIM 1 ZONE: ${price:.4f} — take 25%"
+        elif z['trim2']['min'] <= price <= z['trim2']['max']:
+            zone, msg = 'trim2', f"🟥 TRIM 2 ZONE: ${price:.4f} — max profit"
 
-        z = self.config["zones"]
-        if z["accumulation"]["min"] <= price <= z["accumulation"]["max"]:
-            zone = "accumulation"
-            msg = f"📥 <b>ACCUMULATION ZONE</b>: ${price:.4f}"
-        elif z["watch"]["min"] <= price <= z["watch"]["max"]:
-            zone = "watch"
-            if volume >= self.config["volume_threshold"]:
-                msg = f"👀 <b>WATCH ZONE</b>: ${price:.4f} | Volume strong 🔥"
-            else:
-                msg = f"👀 <b>WATCH ZONE</b>: ${price:.4f} | Volume low ⚠️"
-        elif z["breakout"]["min"] <= price <= z["breakout"]["max"]:
-            zone = "breakout"
-            msg = f"🚀 <b>BREAKOUT</b> forming: ${price:.4f}"
-        elif z["trim1"]["min"] <= price <= z["trim1"]["max"]:
-            zone = "trim1"
-            msg = f"💰 <b>TRIM 1 ZONE</b>: ${price:.4f} — consider taking 25%"
-        elif z["trim2"]["min"] <= price <= z["trim2"]["max"]:
-            zone = "trim2"
-            msg = f"🟥 <b>TRIM 2 ZONE</b>: ${price:.4f} — max profits zone"
-
-        if msg:
-            if self.last_alert_type != zone or (now - self.last_alert_time) > self.config["reminder_interval"]:
-                rsi_txt = f" | RSI: {rsi:.1f}" if rsi is not None else ""
-                await self.send(msg + rsi_txt)
-                self.last_alert_type = zone
-                self.last_alert_time = now
+        if zone and msg:
+            last_time = self.last_alert.get(zone, 0)
+            if now - last_time >= self.config['reminder_interval']:
+                if isinstance(rsi, (int, float)):
+                    msg += f" | RSI: {rsi:.1f}"
+                await self.bot.send_message(chat_id=self.chat_id, text=msg, parse_mode=ParseMode.HTML)
+                self.last_alert[zone] = now
