@@ -1,34 +1,37 @@
 import requests
-from config import CONFIG
 
-def fetch_price_rsi_volume():
-    try:
-        url = f"https://api.coingecko.com/api/v3/coins/{CONFIG['coin_id']}?localization=false&tickers=false&market_data=true"
-        res = requests.get(url).json()
-        price = float(res["market_data"]["current_price"]["usd"])
-        volume = float(res["market_data"]["total_volume"]["usd"])
-        rsi = res.get("rsi_14") or None  # Placeholder; replace with real RSI source
-        momentum = res.get("momentum") or None  # Placeholder; replace with real source
-        return price, rsi, momentum, volume
-    except Exception as e:
-        print("Error fetching price data:", e)
+# Calculate standard RSI
+def calculate_rsi(prices, period=14):
+    if len(prices) < period + 1:
         return None
+    gains, losses = [], []
+    for i in range(1, len(prices)):
+        delta = prices[i] - prices[i-1]
+        if delta > 0:
+            gains.append(delta)
+        elif delta < 0:
+            losses.append(abs(delta))
+    avg_gain = sum(gains[-period:]) / period if gains else 0
+    avg_loss = sum(losses[-period:]) / period if losses else 0
+    if avg_loss == 0:
+        return 100.0 if avg_gain > 0 else 50.0
+    rs = avg_gain / avg_loss
+    return 100 - (100 / (1 + rs))
 
-def format_snapshot(price, rsi, momentum, volume, lo, hi):
-    msg = f"📡 <b>{CONFIG['symbol']} Snapshot</b>
-"
-    msg += f"💰 Price: <b>${price:.4f}</b>
-"
-    msg += f"📈 RSI: <b>{rsi if rsi is not None else 'n/a'}</b>
-"
-    msg += f"⚡ Momentum: <b>{momentum if momentum is not None else 'n/a'}</b>
-"
-    msg += f"📊 Volume (24h): <b>${volume:,.0f}</b>
-"
+# Fetch latest price & volume from Binance
+def fetch_ticker(symbol):
+    url = "https://api.binance.com/api/v3/ticker/24hr"
+    r = requests.get(url, params={"symbol": symbol})
+    d = r.json()
+    return float(d["lastPrice"]), float(d["quoteVolume"])
 
-    if lo <= price <= hi:
-        msg += f"🔔 <b>IN BUY ZONE</b> – between ${lo} and ${hi}"
-    else:
-        msg += f"📎 Outside buy zone (${lo}–${hi})"
-
-    return msg
+# Fetch last (period+1) closes for RSI
+def fetch_klines(symbol, period):
+    url = "https://api.binance.com/api/v3/klines"
+    r = requests.get(url, params={
+        "symbol": symbol,
+        "interval": "1h",
+        "limit": period + 1
+    })
+    kl = r.json()
+    return [float(k[4]) for k in kl]
