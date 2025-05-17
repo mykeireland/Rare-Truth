@@ -1,17 +1,19 @@
-import os
-import asyncio
-from telegram.ext import Application, CommandHandler
+ifrom telegram.ext import Application, CommandHandler
 from logic import StrategyEngine
 from snapshot import snapshot
 from config import CONFIG
 
-async def main():
-    app = Application.builder().token(CONFIG['TELEGRAM_TOKEN']).build()
+# Entry point
+if __name__ == '__main__':
+    # Build the bot application
+    app = Application.builder() \
+        .token(CONFIG['TELEGRAM_TOKEN']) \
+        .build()
 
-    # Register snapshot command
+    # Register the /snapshot command
     app.add_handler(CommandHandler('snapshot', snapshot))
 
-    # Schedule zone alerts
+    # Schedule automated zone alerts
     engine = StrategyEngine()
     app.job_queue.run_repeating(
         lambda ctx: engine.evaluate(),
@@ -19,7 +21,5 @@ async def main():
         first=10
     )
 
-    await app.run_polling()
-
-if __name__ == '__main__':
-    asyncio.run(main())
+    # Start polling (blocks until interrupted)
+    app.run_polling()
