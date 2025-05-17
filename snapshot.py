@@ -51,4 +51,3 @@ async def snapshot(update: Update, context: ContextTypes.DEFAULT_TYPE):
         text=msg,
         parse_mode=ParseMode.HTML
     )
-    )
