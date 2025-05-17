@@ -36,12 +36,11 @@ class StrategyEngine:
         if not price:
             return
 
-        print(f"Price: ${price:.4f}, Volume: ${volume:,}")
         now = time.time()
         self.history.append(price)
-        self.history = self.history[-self.config["rsi_period"]:]  # Keep latest prices
+        self.history = self.history[-(self.config["rsi_period"] + 2):]
 
-        rsi = calculate_rsi(self.history) if self.config["rsi_enabled"] and len(self.history) >= 2 else None
+        rsi = calculate_rsi(self.history) if self.config["rsi_enabled"] and len(self.history) > self.config["rsi_period"] else None
         msg = None
         zone = None
 
@@ -67,7 +66,7 @@ class StrategyEngine:
 
         if msg:
             if self.last_alert_type != zone or (now - self.last_alert_time) > self.config["reminder_interval"]:
-                rsi_txt = f" | RSI: {rsi:.1f}" if rsi else ""
+                rsi_txt = f" | RSI: {rsi:.1f}" if rsi is not None else ""
                 await self.send(msg + rsi_txt)
                 self.last_alert_type = zone
                 self.last_alert_time = now
