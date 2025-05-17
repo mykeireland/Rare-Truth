@@ -41,14 +41,14 @@ async def snapshot(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     # ─── Compute Momentum 
     if isinstance(rsi, (int, float)):
-    if rsi > 70:
-        momentum = "Strong 🚀"
-    elif rsi >= 45:
-        momentum = "Neutral ⚖️"
-    else:
-        momentum = "Weak 🐻"
-    else:
-        momentum = "n/a"
+        if rsi > 70:
+            momentum = "Strong 🚀"
+        elif rsi >= 45:
+            momentum = "Neutral ⚖️"
+        else:
+            momentum = "Weak 🐻"
+        else:
+            momentum = "n/a"
 
     # 4) Determine zone label with float casts
     zone_label = "Out of Range"
@@ -80,6 +80,7 @@ async def snapshot(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"RSI: <b>{rsi_text}</b>\n"
         f"24h Vol: <b>${volume:,.0f}</b>\n"
         f"🔹 Zone: <b>{zone_label}</b>\n\n"
+        f"🔹 Momentum: <b>{momentum}</b>\n\n"
         "Next:\n"
         f"- Buy under <b>${CONFIG['zones']['accumulation']['max']:.2f}</b>\n"
         f"- Trim above <b>${CONFIG['zones']['trim1']['min']:.2f}</b>\n"
