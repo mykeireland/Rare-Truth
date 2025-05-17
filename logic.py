@@ -38,9 +38,9 @@ class StrategyEngine:
 
         now = time.time()
         self.history.append(price)
-        self.history = self.history[-(self.config["rsi_period"] + 2):]
+        self.history = self.history[-self.config["rsi_period"]:]
+        rsi = calculate_rsi(self.history) if self.config["rsi_enabled"] and len(self.history) >= 2 else None
 
-        rsi = calculate_rsi(self.history) if self.config["rsi_enabled"] and len(self.history) > self.config["rsi_period"] else None
         msg = None
         zone = None
 

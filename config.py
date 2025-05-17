@@ -1,9 +1,9 @@
 CONFIG = {
     "coin_id": "thorchain",
     "symbol": "RUNE",
-    "chat_id": "",  # Set via Railway env
-    "telegram_token": "",  # Set via Railway env
-    "poll_interval": 60,  # Seconds
+    "chat_id": "",
+    "telegram_token": "",
+    "poll_interval": 60,
     "zones": {
         "accumulation": {"min": 1.60, "max": 1.66},
         "watch": {"min": 1.66, "max": 1.74},
@@ -13,6 +13,6 @@ CONFIG = {
     },
     "rsi_enabled": True,
     "rsi_period": 14,
-    "volume_threshold": 50000000,  # 24h volume in USD
-    "reminder_interval": 300  # 5 minutes
+    "volume_threshold": 50000000,
+    "reminder_interval": 300
 }

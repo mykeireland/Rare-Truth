@@ -1,1 +1,1 @@
-worker: python rare_truth_v3/main.py
+worker: python main.py
