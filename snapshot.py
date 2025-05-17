@@ -6,28 +6,44 @@ from config import CONFIG
 from utils import calculate_rsi, fetch_ticker, fetch_klines
 
 async def snapshot(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # Fetch current price & volume
     price, volume = fetch_ticker(CONFIG["binance_symbol"])
-    # RSI
+
+    # Calculate RSI
     rsi = None
     if CONFIG["rsi_enabled"]:
         closes = fetch_klines(CONFIG["binance_symbol"], CONFIG["rsi_period"])
         rsi = calculate_rsi(closes, CONFIG["rsi_period"])
-    # Momentum
+
+    # Determine momentum
     if isinstance(rsi, (int, float)):
-        momentum = "Strong 🚀" if rsi > 70 else "Neutral ⚖️" if rsi >= 45 else "Weak 🐻"
+        if rsi > 70:
+            momentum = "Strong 🚀"
+        elif rsi >= 45:
+            momentum = "Neutral ⚖️"
+        else:
+            momentum = "Weak 🐻"
     else:
         momentum = "n/a"
-    # Zone
+
+    # Determine zone label
     zone = "Out of Range"
-    for k,b in CONFIG["zones"].items():
-        if b["min"] <= price <= b["max"]:
-            zone = k.capitalize()
+    for key, bounds in CONFIG["zones"].items():
+        if bounds["min"] <= price <= bounds["max"]:
+            zone = key.capitalize()
             break
-    # Build message
+
+    # Format RSI text separately to avoid invalid f-string
+    rsi_text = f"{rsi:.1f}" if isinstance(rsi, (int, float)) else "n/a"
+
+    # Build and send the snapshot message
     msg = (
-        f"📡 <b>{CONFIG['symbol']} Snapshot</b>\n"
-        f"Price: <b>${price:.4f}</b>   24h Vol: <b>${volume:,.0f}</b>\n"
-        f"RSI: <b>{rsi:.1f if rsi else 'n/a'}</b>   Momentum: <b>{momentum}</b>\n"
+        f"📡 <b>{CONFIG['symbol']} Snapshot</b>
+"
+        f"Price: <b>${price:.4f}</b>   24h Vol: <b>${volume:,.0f}</b>
+"
+        f"RSI: <b>{rsi_text}</b>   Momentum: <b>{momentum}</b>
+"
         f"Zone: <b>{zone}</b>"
     )
     await context.bot.send_message(
