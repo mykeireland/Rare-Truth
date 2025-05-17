@@ -1,3 +1,5 @@
+print("🛠️ Booting up... token=", os.getenv("TELEGRAM_TOKEN"))
+
 import asyncio
 import os
 from telegram.ext import Application, CommandHandler
