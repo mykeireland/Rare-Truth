@@ -1,3 +1,4 @@
+import os
 print("🛠️ Booting up... token=", os.getenv("TELEGRAM_TOKEN"))
 
 import asyncio
