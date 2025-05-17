@@ -2,7 +2,8 @@
 
 import requests
 import os
-from telegram import Update, ParseMode
+from telegram import Update
+from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 from config import CONFIG
 from utils import calculate_rsi
