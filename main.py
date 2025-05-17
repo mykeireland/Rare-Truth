@@ -1,16 +1,14 @@
 import os
-print("🛠️ Booting up... token=", os.getenv("TELEGRAM_TOKEN"))
-
-import asyncio
-import os
 from telegram.ext import Application, CommandHandler
 from snapshot import snapshot
 
-async def main():
-    app = Application.builder().token(os.getenv("TELEGRAM_TOKEN")).build()
-    app.add_handler(CommandHandler("snapshot", snapshot))
-    await app.run_polling()
+print("🛠️ Booting up... token =", os.getenv("TELEGRAM_TOKEN"))
 
-if __name__ == "__main__":
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(main())
+# Build the app
+app = Application.builder().token(os.getenv("TELEGRAM_TOKEN")).build()
+
+# Register commands
+app.add_handler(CommandHandler("snapshot", snapshot))
+
+# Start polling (no asyncio.run / no manual loop mgmt)
+app.run_polling()
