@@ -14,32 +14,31 @@ async def snapshot(update: Update, context: ContextTypes.DEFAULT_TYPE):
         data   = resp.json()["market_data"]
         price  = float(data["current_price"]["usd"])
         volume = float(data["total_volume"]["usd"])
-        print(f"🔍 snapshot debug – price type: {type(price)}, value: {price}")
     except Exception as e:
-        print("Fetch error:", e)
         await context.bot.send_message(
             chat_id=update.effective_chat.id,
             text="❌ Error fetching market data."
         )
         return
 
-    # 2) Maintain RSI history
-    history = context.bot_data.get("price_history", [])
-    history.append(price)
-    history = history[-CONFIG["rsi_period"]:]
-    context.bot_data["price_history"] = history
-
-    # 3) Compute RSI safely
+    # 2) Fetch historical prices for RSI
     rsi = None
-    if CONFIG["rsi_enabled"] and len(history) >= 2:
+    if CONFIG["rsi_enabled"]:
         try:
-            rsi = calculate_rsi(history, CONFIG["rsi_period"])
-        except Exception as e:
-            print("RSI error:", e)
+            chart = requests.get(
+                f"https://api.coingecko.com/api/v3/coins/{CONFIG['coin_id']}/market_chart",
+                params={"vs_currency": "usd", "days": 1, "interval": "hourly"}
+            ).json()
+            prices = [p[1] for p in chart["prices"]]
+            hist = prices[-(CONFIG["rsi_period"] + 1):]
+            rsi = calculate_rsi(hist, CONFIG["rsi_period"])
+        except Exception:
             rsi = None
+
+    # 3) Format RSI text
     rsi_text = f"{rsi:.1f}" if isinstance(rsi, (int, float)) else "n/a"
 
-    # 4) Compute Momentum descriptor
+    # 4) Compute Momentum based on RSI
     if isinstance(rsi, (int, float)):
         if rsi > 70:
             momentum = "Strong 🚀"
@@ -50,19 +49,20 @@ async def snapshot(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         momentum = "n/a"
 
-    # 5) Determine zone label (casts ensure comparators are floats)
+    # 5) Determine zone with float casts
     zone_label = "Out of Range"
     for key, bounds in CONFIG["zones"].items():
         lo = float(bounds["min"])
         hi = float(bounds["max"])
         if lo <= price <= hi:
-            zone_label = {
+            mapping = {
                 "accumulation": "Accumulation",
                 "watch":        "Watch",
                 "breakout":     "Breakout",
                 "trim1":        "Trim 1",
                 "trim2":        "Trim 2"
-            }.get(key, key.capitalize())
+            }
+            zone_label = mapping.get(key, key.capitalize())
             break
 
     # 6) Build & send the snapshot message
