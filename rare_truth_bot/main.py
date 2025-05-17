@@ -14,12 +14,18 @@ WATCH_ZONE_DELTA = 0.03
 
 async def fetch_price():
     try:
-        response = requests.get(DEX_URL)
-        data = response.json()
-        return float(data['pairs'][0]['priceUsd'])
+        response = requests.get("https://api.dexscreener.com/latest/dex/pairs/thorchain/USDT-RUNE")
+        if response.status_code == 200:
+            data = response.json()
+            if isinstance(data, dict) and 'pairs' in data:
+                return float(data['pairs'][0]['priceUsd'])
+            else:
+                print("Unexpected API structure:", data)
+        else:
+            print(f"Dex API failed with status code {response.status_code}")
     except Exception as e:
         print("Error fetching price:", e)
-        return None
+    return None
 
 async def send_message(text):
     try:
