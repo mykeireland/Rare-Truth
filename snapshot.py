@@ -1,4 +1,3 @@
-import os
 import requests
 from telegram import Update
 from telegram.constants import ParseMode
@@ -7,57 +6,54 @@ from config import CONFIG
 from utils import calculate_rsi
 
 async def snapshot(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # ─── Fetch market data safely ─────────────────────────────────────────────
+    # 1) Fetch & cast to floats
     try:
         resp = requests.get(
             f"https://api.coingecko.com/api/v3/coins/{CONFIG['coin_id']}"
         )
-        data = resp.json()["market_data"]
+        data   = resp.json()["market_data"]
         price  = float(data["current_price"]["usd"])
         volume = float(data["total_volume"]["usd"])
-
-    except Exception:
+        print(f"🔍 snapshot debug – price type: {type(price)}, value: {price}")
+    except Exception as e:
+        print("Fetch error:", e)
         await context.bot.send_message(
             chat_id=update.effective_chat.id,
-            text="❌ Error fetching market data."
+            text="❌ Error fetching data."
         )
         return
 
-    # ─── Maintain RSI history ──────────────────────────────────────────────────
+    # 2) Maintain history for RSI
     history = context.bot_data.get("price_history", [])
     history.append(price)
     history = history[-CONFIG["rsi_period"]:]
     context.bot_data["price_history"] = history
 
-    # ─── Compute RSI with safe fallback ────────────────────────────────────────
+    # 3) Compute RSI safely
     rsi = None
     if CONFIG["rsi_enabled"] and len(history) >= 2:
         try:
             rsi = calculate_rsi(history, CONFIG["rsi_period"])
-        except Exception:
+        except Exception as e:
+            print("RSI error:", e)
             rsi = None
-    try:
-        rsi_text = f"{rsi:.1f}" if isinstance(rsi, (int, float)) else "n/a"
-    except Exception:
-        rsi_text = "n/a"
+    rsi_text = f"{rsi:.1f}" if isinstance(rsi, (int, float)) else "n/a"
 
-    # ─── Determine current zone label ─────────────────────────────────────────
+    # 4) Determine zone
     zone_label = "Out of Range"
     for key, (lo, hi) in CONFIG["zones"].items():
+        # lo, hi are floats; price is now float
         if lo <= price <= hi:
-            if key == "accumulation":
-                zone_label = "Accumulation"
-            elif key == "watch":
-                zone_label = "Watch"
-            elif key == "breakout":
-                zone_label = "Breakout"
-            elif key == "trim1":
-                zone_label = "Trim 1"
-            elif key == "trim2":
-                zone_label = "Trim 2"
+            zone_label = {
+                "accumulation": "Accumulation",
+                "watch":        "Watch",
+                "breakout":     "Breakout",
+                "trim1":        "Trim 1",
+                "trim2":        "Trim 2"
+            }[key]
             break
 
-    # ─── Build and send the snapshot message ─────────────────────────────────
+    # 5) Build & send message
     msg = (
         f"📡 <b>{CONFIG['symbol']} Snapshot</b>\n"
         f"Price: <b>${price:.4f}</b>\n"
