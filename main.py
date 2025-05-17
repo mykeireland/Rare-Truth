@@ -1,4 +1,4 @@
-ifrom telegram.ext import Application, CommandHandler
+from telegram.ext import Application, CommandHandler
 from logic import StrategyEngine
 from snapshot import snapshot
 from config import CONFIG
