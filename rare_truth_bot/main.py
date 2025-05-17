@@ -1,40 +1,44 @@
 import asyncio
 import os
 import requests
-from dotenv import load_dotenv
 from telegram import Bot
+from telegram.constants import ParseMode
+from dotenv import load_dotenv
 
 load_dotenv()
 
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 CHAT_ID = os.getenv("CHAT_ID")
-API_URL = "https://api.dexscreener.com/latest/dex/pairs/arbitrum/0xf0f1613c"
-THRESHOLD_PRICE = 1.76
-WATCH_ZONE_DELTA = 0.02
-
 bot = Bot(token=TELEGRAM_TOKEN)
 
-def fetch_price():
+DEX_URL = "https://api.dexscreener.com/latest/dex/pairs/thorchain/USDT-RUNE"
+TRIGGER_ZONE = 1.76
+WATCH_ZONE_DELTA = 0.03
+
+async def fetch_price():
     try:
-        response = requests.get(API_URL)
+        response = requests.get(DEX_URL)
         data = response.json()
-        price = float(data['pair']['priceUsd'])
-        return price
+        return float(data['pairs'][0]['priceUsd'])
     except Exception as e:
+        print("Error fetching price:", e)
         return None
 
-async def send_alert(message):
-    await bot.send_message(chat_id=CHAT_ID, text=message)
+async def send_message(text):
+    try:
+        await bot.send_message(chat_id=CHAT_ID, text=text, parse_mode=ParseMode.HTML)
+    except Exception as e:
+        print("Telegram send failed:", e)
 
 async def monitor():
     while True:
-        price = fetch_price()
+        price = await fetch_price()
         if price:
-            if price <= THRESHOLD_PRICE:
-                await send_alert(f"🔔 BUY ZONE HIT: RUNE at ${price:.4f} - ACT NOW")
-            elif abs(price - THRESHOLD_PRICE) <= WATCH_ZONE_DELTA:
-                await send_alert(f"👀 Watch zone: RUNE at ${price:.4f}")
-        await asyncio.sleep(300)  # 5 minutes
+            if price <= TRIGGER_ZONE:
+                await send_message(f"🚀 <b>BUY ZONE</b> hit: RUNE at ${price:.4f}")
+            elif abs(price - TRIGGER_ZONE) <= WATCH_ZONE_DELTA:
+                await send_message(f"👀 <i>Watch zone</i>: RUNE at ${price:.4f}")
+        await asyncio.sleep(300)
 
 if __name__ == "__main__":
     asyncio.run(monitor())
