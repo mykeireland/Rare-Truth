@@ -6,39 +6,32 @@ from config import CONFIG
 from utils import calculate_rsi
 
 async def snapshot(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # 1) Fetch & cast to floats
+    # 1) Fetch current price & volume
     try:
-        resp = requests.get(
-            f"https://api.coingecko.com/api/v3/coins/{CONFIG['coin_id']}"
-        )
+        resp = requests.get(f"https://api.coingecko.com/api/v3/coins/{CONFIG['coin_id']}")
         data   = resp.json()["market_data"]
         price  = float(data["current_price"]["usd"])
         volume = float(data["total_volume"]["usd"])
-    except Exception as e:
-        await context.bot.send_message(
-            chat_id=update.effective_chat.id,
-            text="❌ Error fetching market data."
-        )
+    except Exception:
+        await context.bot.send_message(update.effective_chat.id, "❌ Error fetching data.")
         return
 
-    # 2) Fetch historical prices for RSI
-    rsi = None
-    if CONFIG["rsi_enabled"]:
-        try:
-            chart = requests.get(
-                f"https://api.coingecko.com/api/v3/coins/{CONFIG['coin_id']}/market_chart",
-                params={"vs_currency": "usd", "days": 1, "interval": "hourly"}
-            ).json()
-            prices = [p[1] for p in chart["prices"]]
-            hist = prices[-(CONFIG["rsi_period"] + 1):]
-            rsi = calculate_rsi(hist, CONFIG["rsi_period"])
-        except Exception:
-            rsi = None
+    # 2) Build price history for RSI
+    history = context.bot_data.get("price_history", [])
+    history.append(price)
+    history = history[-(CONFIG["rsi_period"] + 1):]
+    context.bot_data["price_history"] = history
 
-    # 3) Format RSI text
+    # 3) Compute RSI
+    rsi = None
+    if CONFIG["rsi_enabled"] and len(history) >= CONFIG["rsi_period"] + 1:
+        try:
+            rsi = calculate_rsi(history, CONFIG["rsi_period"])
+        except:
+            rsi = None
     rsi_text = f"{rsi:.1f}" if isinstance(rsi, (int, float)) else "n/a"
 
-    # 4) Compute Momentum based on RSI
+    # 4) Compute Momentum
     if isinstance(rsi, (int, float)):
         if rsi > 70:
             momentum = "Strong 🚀"
@@ -49,23 +42,21 @@ async def snapshot(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         momentum = "n/a"
 
-    # 5) Determine zone with float casts
+    # 5) Determine Zone
     zone_label = "Out of Range"
     for key, bounds in CONFIG["zones"].items():
-        lo = float(bounds["min"])
-        hi = float(bounds["max"])
+        lo, hi = float(bounds["min"]), float(bounds["max"])
         if lo <= price <= hi:
-            mapping = {
-                "accumulation": "Accumulation",
-                "watch":        "Watch",
-                "breakout":     "Breakout",
-                "trim1":        "Trim 1",
-                "trim2":        "Trim 2"
-            }
-            zone_label = mapping.get(key, key.capitalize())
+            zone_label = {
+                "accumulation":"Accumulation",
+                "watch":       "Watch",
+                "breakout":    "Breakout",
+                "trim1":       "Trim 1",
+                "trim2":       "Trim 2"
+            }[key]
             break
 
-    # 6) Build & send the snapshot message
+    # 6) Send the snapshot
     msg = (
         f"📡 <b>{CONFIG['symbol']} Snapshot</b>\n"
         f"Price: <b>${price:.4f}</b>\n"
@@ -78,8 +69,4 @@ async def snapshot(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"- Trim above <b>${CONFIG['zones']['trim1']['min']:.2f}</b>\n"
         f"- Breakout at <b>${CONFIG['zones']['breakout']['min']:.2f}</b>"
     )
-    await context.bot.send_message(
-        chat_id=update.effective_chat.id,
-        text=msg,
-        parse_mode=ParseMode.HTML
-    )
+    await context.bot.send_message(update.effective_chat.id, msg, parse_mode=ParseMode.HTML)
