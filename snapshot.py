@@ -23,13 +23,13 @@ async def snapshot(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # 2) Maintain history
+    # 2) Maintain RSI history
     history = context.bot_data.get("price_history", [])
     history.append(price)
     history = history[-CONFIG["rsi_period"]:]
     context.bot_data["price_history"] = history
 
-    # 3) Compute RSI
+    # 3) Compute RSI safely
     rsi = None
     if CONFIG["rsi_enabled"] and len(history) >= 2:
         try:
@@ -38,8 +38,8 @@ async def snapshot(update: Update, context: ContextTypes.DEFAULT_TYPE):
             print("RSI error:", e)
             rsi = None
     rsi_text = f"{rsi:.1f}" if isinstance(rsi, (int, float)) else "n/a"
-    
-    # ─── Compute Momentum 
+
+    # 4) Compute Momentum descriptor
     if isinstance(rsi, (int, float)):
         if rsi > 70:
             momentum = "Strong 🚀"
@@ -47,39 +47,31 @@ async def snapshot(update: Update, context: ContextTypes.DEFAULT_TYPE):
             momentum = "Neutral ⚖️"
         else:
             momentum = "Weak 🐻"
-        else:
-            momentum = "n/a"
+    else:
+        momentum = "n/a"
 
-    # 4) Determine zone label with float casts
+    # 5) Determine zone label (casts ensure comparators are floats)
     zone_label = "Out of Range"
     for key, bounds in CONFIG["zones"].items():
-        try:
-            lo = float(bounds["min"])
-            hi = float(bounds["max"])
-        except Exception as e:
-            print(f"Zone parse error for {key}:", e)
-            continue
-
-        # debug each zone comparison
-        print(f"🔍 comparing price {price} against zone '{key}' [{lo}, {hi}]")
+        lo = float(bounds["min"])
+        hi = float(bounds["max"])
         if lo <= price <= hi:
-            mapping = {
+            zone_label = {
                 "accumulation": "Accumulation",
                 "watch":        "Watch",
                 "breakout":     "Breakout",
                 "trim1":        "Trim 1",
                 "trim2":        "Trim 2"
-            }
-            zone_label = mapping.get(key, key.capitalize())
+            }.get(key, key.capitalize())
             break
 
-    # 5) Build & send message
+    # 6) Build & send the snapshot message
     msg = (
         f"📡 <b>{CONFIG['symbol']} Snapshot</b>\n"
         f"Price: <b>${price:.4f}</b>\n"
         f"RSI: <b>{rsi_text}</b>\n"
         f"24h Vol: <b>${volume:,.0f}</b>\n"
-        f"🔹 Zone: <b>{zone_label}</b>\n\n"
+        f"🔹 Zone: <b>{zone_label}</b>\n"
         f"🔹 Momentum: <b>{momentum}</b>\n\n"
         "Next:\n"
         f"- Buy under <b>${CONFIG['zones']['accumulation']['max']:.2f}</b>\n"
@@ -91,4 +83,3 @@ async def snapshot(update: Update, context: ContextTypes.DEFAULT_TYPE):
         text=msg,
         parse_mode=ParseMode.HTML
     )
-
