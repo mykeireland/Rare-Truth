@@ -1,3 +1,5 @@
+# Force clean reinstall
+--no-cache-dir
 python-telegram-bot==13.15
 requests
-dotenv
+python-dotenv
