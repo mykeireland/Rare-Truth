@@ -8,11 +8,12 @@ from utils import calculate_rsi
 async def snapshot(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Fetch market data
     try:
-        data = requests.get(
-            f"https://api.coingecko.com/api/v3/coins/{CONFIG['coin_id']}"
-        ).json()['market_data']
-        price = data['current_price']['usd']
-        volume = data['total_volume']['usd']
+    data = requests.get(f"https://api.coingecko.com/api/v3/coins/{CONFIG['coin_id']}"
+    ).json()['market_data']
+    # 👉 Force numeric types for correct comparisons
+    price  = float(data['current_price']['usd'])
+    volume = float(data['total_volume']['usd'])
+
     except Exception:
         await context.bot.send_message(
             chat_id=update.effective_chat.id,
