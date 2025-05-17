@@ -33,7 +33,7 @@ async def snapshot(update: Update, context: ContextTypes.DEFAULT_TYPE):
             zone = key.capitalize()
             break
 
-    # Format RSI text separately to avoid invalid f-string
+    # Format RSI text
     rsi_text = f"{rsi:.1f}" if isinstance(rsi, (int, float)) else "n/a"
 
     # Build and send the snapshot message
@@ -50,4 +50,5 @@ async def snapshot(update: Update, context: ContextTypes.DEFAULT_TYPE):
         chat_id=update.effective_chat.id,
         text=msg,
         parse_mode=ParseMode.HTML
+    )
     )
