@@ -3,9 +3,6 @@ import os
 import requests
 from telegram import Bot
 from telegram.constants import ParseMode
-from dotenv import load_dotenv
-
-load_dotenv()
 
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 CHAT_ID = os.getenv("CHAT_ID")
