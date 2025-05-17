@@ -38,6 +38,17 @@ async def snapshot(update: Update, context: ContextTypes.DEFAULT_TYPE):
             print("RSI error:", e)
             rsi = None
     rsi_text = f"{rsi:.1f}" if isinstance(rsi, (int, float)) else "n/a"
+    
+    # ─── Compute Momentum 
+    if isinstance(rsi, (int, float)):
+    if rsi > 70:
+        momentum = "Strong 🚀"
+    elif rsi >= 45:
+        momentum = "Neutral ⚖️"
+    else:
+        momentum = "Weak 🐻"
+    else:
+        momentum = "n/a"
 
     # 4) Determine zone label with float casts
     zone_label = "Out of Range"
