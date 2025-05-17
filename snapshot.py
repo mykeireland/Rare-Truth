@@ -15,6 +15,7 @@ async def snapshot(update: Update, context: ContextTypes.DEFAULT_TYPE):
         data = resp.json()["market_data"]
         price  = float(data["current_price"]["usd"])
         volume = float(data["total_volume"]["usd"])
+
     except Exception:
         await context.bot.send_message(
             chat_id=update.effective_chat.id,
