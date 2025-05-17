@@ -37,7 +37,7 @@ async def snapshot(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     msg = f"""📡 <b>RUNE Market Snapshot</b>
 Price: <b>${price:.4f}</b>
-RSI (14): <b>{rsi:.1f if rsi else "n/a"}</b>
+rsi_text = f"{rsi:.1f}" if rsi is not None else "n/a"
 24h Volume: <b>${volume:,.0f}</b>
 
 🔹 Zone: <b>{zone}</b>
